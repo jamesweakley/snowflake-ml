@@ -1,3 +1,17 @@
+/* decision_tree_train - a stored procedure that trains a decision tree, and stores the model in the 'ml_model_runs' table
+ *  Parameters:
+ *    TABLE_NAME - the name of the table containing the training data
+ *    TARGET - the name of the column containing the target variable (the one to predict)
+ *    COLS - a comma separated list of the table columns to include as variables in the model
+ *    TRAINING_PARAMS - an object containing training parameters, which can be:
+         cv_limit (default 10) - Coefficient of Deviation limit, used to stop branching
+         total_count_limit (default 1) - Total record count limit, used to stop branching
+         cv_decimal_places (default 5) - The number of decimal places to round the Coefficient of Deviation calculation to
+         average_decimal_places (default 2) - The number of decimal places to round the average calculation to (where multiple records exist at a leaf)
+         maxDepth (default 15) - the maximum depth of the tree
+         maxFeatures (default 8) - the maximum number of features to evaluate at a time
+         debugMessages (default false) - set to true to include extra information in the output model about the state of each node
+*/
 create or replace procedure decision_tree_train(TABLE_NAME VARCHAR, TARGET VARCHAR, COLS VARCHAR,TRAINING_PARAMS VARIANT)
   returns string not null
   language javascript
@@ -117,14 +131,13 @@ create or replace procedure decision_tree_train(TABLE_NAME VARCHAR, TARGET VARCH
   });
   results.next();
   var default_training_parameters={};
-  default_training_parameters.selectedColumns=columns;
   default_training_parameters.cv_limit=10;
   default_training_parameters.total_count_limit=1;
   default_training_parameters.cv_decimal_places=5;
   default_training_parameters.average_decimal_places=2;
   default_training_parameters.maxDepth=15;
   default_training_parameters.maxFeatures=8;
-  default_training_parameters.debugMessages=true;
+  default_training_parameters.debugMessages=false;
   
   var training_parameters={...default_training_parameters,...TRAINING_PARAMS};
   
