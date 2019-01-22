@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/jamesweakley/snowflake-ml#readme",
   "dependencies": {
-    "snowflake-sdk": "^1.1.10"
+    "snowflake-sdk": "^1.1.10",
+    "threads": "^0.12.0"
   }
 }
