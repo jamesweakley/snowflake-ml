@@ -1,0 +1,22 @@
+{
+  "name": "snowflake-ml",
+  "version": "1.0.0",
+  "description": "Machine Learning in Snowflake",
+  "main": "decision_tree.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jamesweakley/snowflake-ml.git"
+  },
+  "author": "James Weakley",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/jamesweakley/snowflake-ml/issues"
+  },
+  "homepage": "https://github.com/jamesweakley/snowflake-ml#readme",
+  "dependencies": {
+    "snowflake-sdk": "^1.1.10"
+  }
+}
