@@ -2,7 +2,7 @@
 * Score a decision tree using a case statement.
 * WARNING, not secure: This needs to be refactored to use bindings instead of string interpolation.
 */
-create or replace procedure score_decision_tree(TABLE_NAME VARCHAR, MODEL_OBJECT variant, SCORE_COLUMN VARCHAR)
+create or replace procedure decision_tree_score(TABLE_NAME VARCHAR, MODEL_OBJECT variant, SCORE_COLUMN VARCHAR)
   returns String not null
   language javascript
   as

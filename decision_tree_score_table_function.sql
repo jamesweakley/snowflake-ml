@@ -1,4 +1,4 @@
-CREATE OR REPLACE FUNCTION score_decision_tree(MODEL_OBJECT variant,ROW_DATA variant)
+CREATE OR REPLACE FUNCTION decision_tree_score(MODEL_OBJECT variant,ROW_DATA variant)
     RETURNS TABLE (SCORE FLOAT,MODEL variant)
     LANGUAGE JAVASCRIPT
     AS '{
