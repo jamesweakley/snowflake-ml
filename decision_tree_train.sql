@@ -57,6 +57,7 @@ create or replace procedure decision_tree_train(TABLE_NAME VARCHAR, TARGET VARCH
    *                   / | \   /   \
    *              [   O  O  O O     O   ]      <- Third call (recursive)
    *
+   * and each node object looks like this: {whereClause:"1=? and x<? and y>?",whereClauseBindings:[1,4,2],remainingCols:['a','b','c']}
    *
    * Parameters:
    * - tableName              : The name of the table/view containing the source data
@@ -73,12 +74,29 @@ create or replace procedure decision_tree_train(TABLE_NAME VARCHAR, TARGET VARCH
     
     var currentBranchQueries=[];
     var currentBranchQueryBindings=[];
+    
+    // The first query collects some important information about each node:
+    // 1) The standard deviation of all the target values from this node down, as we will pick the branch that reduces this value the most
+    // 2) The average value of all the target values from this node down, as ultimately average is used as a predictor when we reach the leaf
+    // 3) The coefficient of variation, can be used to stop building when it gets too small
+    // 4) The number of target values from this node down, can be used to stop building when it gets too small
+    // 5) For each potential branch below (from the list of remaining columns), the median value for splitting the data
     for (var i=0;i<treeNodes.length;i++){
+        
+        var remainingColumnMedians=[];
+        for (var j=0;j<treeNodes[i].remainingCols.length;j++){
+            remainingColumnMedians.push("MEDIAN("+treeNodes[i].remainingCols[j]+") as median_"+j);
+        }
+        var remainingColumnMediansQuery="";
+        if (remainingColumnMedians.length>0){
+            remainingColumnMediansQuery=","+remainingColumnMedians.join(",");
+        }
         currentBranchQueries.push("select "+i+" as index,"+
                         "stddev("+target+") as target_stddev,"+
                         "avg("+target+") as target_avg,"+
                         "case when target_avg is not null and target_avg!=0 then target_stddev/target_avg*100 else 0 end as coef_of_variation,"+
                         "count(*) as target_count"+
+                        remainingColumnMediansQuery+
                         " from "+tableName+" where "+treeNodes[i].whereClause);
         currentBranchQueryBindings=currentBranchQueryBindings.concat(treeNodes[i].whereClauseBindings);
     }
@@ -97,6 +115,10 @@ create or replace procedure decision_tree_train(TABLE_NAME VARCHAR, TARGET VARCH
         var coefficientOfVariation=results.getColumnValue(4);
         var target_count=results.getColumnValue(5);
         var node=treeNodes[index];
+        var medianValues=[];
+        for (var i=0;i<node.remainingCols.length;i++){
+            medianValues.push(results.getColumnValue(6+i));
+        }
         if (averageBelow==null){
           treeNodes[index]=null;
           /*if (training_parameters.debugMessages){
@@ -161,13 +183,23 @@ create or replace procedure decision_tree_train(TABLE_NAME VARCHAR, TARGET VARCH
           var col=node.remainingCols[i];
           columnQueries.push("select '"+index+"' as index,"+
               "'"+col+"' as col,"+
-              col+" as column_value,"+
+              "'left' as side,"+
               "stddev("+target+") as sd_branch, "+
               "count("+col+") as count_branch, "+
               "count("+col+")/"+target_count+"*stddev("+target+") as p_times_s, "+
-              "median("+col+") as median_branch "+
-              "from "+tableName+" where "+node.whereClause+" group by "+col);
-          columnQueryBindings=columnQueryBindings.concat(node.whereClauseBindings);
+              stddevBeforeSplit+" as stddev_before_split "+
+              "from "+tableName+" where "+node.whereClause+" and "+col+"<"+medianValues[i]);
+              
+          columnQueries.push("select '"+index+"' as index,"+
+              "'"+col+"' as col,"+
+              "'right' as side,"+
+              "stddev("+target+") as sd_branch, "+
+              "count("+col+") as count_branch, "+
+              "count("+col+")/"+target_count+"*stddev("+target+") as p_times_s, "+
+              stddevBeforeSplit+" as stddev_before_split "+
+              //"median("+col+") as median_branch "+
+              "from "+tableName+" where "+node.whereClause+" and "+col+">="+medianValues[i]);
+          columnQueryBindings=columnQueryBindings.concat(node.whereClauseBindings).concat(node.whereClauseBindings);
         }
         
     }
@@ -175,9 +207,9 @@ create or replace procedure decision_tree_train(TABLE_NAME VARCHAR, TARGET VARCH
     if (columnQueries.length==0){
         return;
     }
-    var query="with childcalcs as (select index,col,"+stddevBeforeSplit+"-sum(p_times_s) as sdr, rank() over ( PARTITION BY index ORDER BY sdr DESC) as rank,median_branch from (";
+    var query="with childcalcs as (select index,col,side,stddev_before_split-sum(p_times_s) as sdr, rank() over ( PARTITION BY index ORDER BY sdr DESC) as rank from (";
     query=query+columnQueries.join(" union ");
-    query=query+") group by INDEX, col,median_branch) select * from childcalcs where rank=1";
+    query=query+") group by INDEX, col,stddev_before_split,side) select * from childcalcs where rank=1";
     results = snowflake.execute({
       sqlText: query,
       binds: columnQueryBindings
@@ -243,7 +275,7 @@ create or replace procedure decision_tree_train(TABLE_NAME VARCHAR, TARGET VARCH
   default_training_parameters.average_decimal_places=2;
   default_training_parameters.maxDepth=15;
   default_training_parameters.maxFeatures=4;
-  default_training_parameters.debugMessages=false;
+  default_training_parameters.debugMessages=true;
   
   var training_parameters={...default_training_parameters,...TRAINING_PARAMS};
   
@@ -271,7 +303,6 @@ create or replace procedure decision_tree_train(TABLE_NAME VARCHAR, TARGET VARCH
   levelCalc(TABLE_NAME,treeNodes,TARGET,1,training_parameters,allColumnDistinctValues)
   var rootNode=treeNodes[0];
   // Clean up model object, remove all the state used during tree construction
-  //removeKeys(rootNode,['whereClause','whereClauseBindings','remainingCols']);
   removeTrainingState(rootNode);
   results = snowflake.execute({
     sqlText: "update ml_model_runs set end_time=current_timestamp::TIMESTAMP_NTZ, model_object=parse_json('"+JSON.stringify(rootNode)+"') where run_id=?",
@@ -281,10 +312,3 @@ create or replace procedure decision_tree_train(TABLE_NAME VARCHAR, TARGET VARCH
   $$
   ;
   
-
-truncate table logging;
-
-call decision_tree_train('bikes_hours_eng_2','CASUAL','hr_bucket,holiday,workingday,weathersit,temp,atemp,hum',null);
-
-
-
