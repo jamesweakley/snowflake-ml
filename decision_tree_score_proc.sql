@@ -32,21 +32,6 @@ create or replace procedure decision_tree_score(TABLE_NAME VARCHAR, MODEL_OBJECT
     return caseStatement;
   }
   
-  function leafCalc(tableName,whereClause,target,remainingCols,depth,trainingParameters){
-    var return_object={"cumulative_where_clause":whereClause};
-    var results;
-    results = snowflake.execute({
-        sqlText: "select stddev("+target+") as target_stddev,"+
-                        "avg("+target+") as target_avg,"+
-                        "case when target_avg is not null then target_stddev/target_avg*100 else 0 end as coef_of_variation,"+
-                        "count(*) as target_count "+
-                        "from "+tableName+" where "+whereClause
-      });
-    results.next();
-    var averageBelow=results.getColumnValue(2);
-  }
-  
-  
   var caseStatement=buildCaseStatement(MODEL_OBJECT);
   
   var results = snowflake.execute({
