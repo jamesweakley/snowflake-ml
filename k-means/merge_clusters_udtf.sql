@@ -26,7 +26,12 @@ create or replace function MERGE_CLUSTERS(CLUSTER_TOTALS variant)
     language javascript
     AS '{
     processRow: function (row, rowWriter, context) {
-      for (var clusterId in row.CLUSTER_TOTALS){
+      var clusterIds=Object.keys(row.CLUSTER_TOTALS);
+      let clusterId;
+      let cluster;
+      for (var clusterIdIndex=0; clusterIdIndex<clusterIds.length;clusterIdIndex++){
+      //for (var clusterId in Object.keys(row.CLUSTER_TOTALS)){
+        clusterId=clusterIds[clusterIdIndex];
         cluster=row.CLUSTER_TOTALS[clusterId];
         this.clusterXTotals[clusterId]=(this.clusterXTotals[clusterId] || 0) + cluster.x_total;
         this.clusterYTotals[clusterId]=(this.clusterYTotals[clusterId] || 0) + cluster.y_total
@@ -35,7 +40,7 @@ create or replace function MERGE_CLUSTERS(CLUSTER_TOTALS variant)
     },
     finalize: function (rowWriter, context) {
       var newClusters={}
-      for (var clusterId in this.clusterCounts){
+      for (var clusterId in Object.keys(this.clusterCounts)){
         newClusters[clusterId]={}
         if (this.clusterCounts[clusterId]>0){
           newClusters[clusterId].x=(this.clusterXTotals[clusterId]/this.clusterCounts[clusterId]).toPrecision(2);

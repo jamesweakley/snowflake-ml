@@ -38,7 +38,7 @@
 -- Note: Cluster centroids are stored in an object rather than an array, so that we can maintain a
 -- consistent identifier for each of them. It doesn't serve much purpose currently, but in future
 -- we might handle 0-member clusters differently.
-create or replace function UPDATE_CLUSTERS(X double, Y double, CLUSTER_CENTROIDS variant)
+create or replace function UPDATE_CLUSTERS(X float, Y float, CLUSTER_CENTROIDS variant)
     returns table (NEW_CLUSTER_TOTALS variant)
     language javascript
     AS '{
