@@ -30,13 +30,13 @@ create or replace function MERGE_CLUSTERS(CLUSTER_TOTALS variant)
       let clusterId;
       let cluster;
       for (var clusterIdIndex=0; clusterIdIndex<clusterIds.length;clusterIdIndex++){
-      //for (var clusterId in Object.keys(row.CLUSTER_TOTALS)){
         clusterId=clusterIds[clusterIdIndex];
         cluster=row.CLUSTER_TOTALS[clusterId];
-        this.clusterXTotals[clusterId]=(this.clusterXTotals[clusterId] || 0) + cluster.x_total;
-        this.clusterYTotals[clusterId]=(this.clusterYTotals[clusterId] || 0) + cluster.y_total
-        this.clusterCounts[clusterId]=(this.clusterCounts[clusterId] || 0) + cluster.count;
+        this.clusterXTotals[clusterId]=(this.clusterXTotals[clusterId] || 0) + (cluster.x_total || 0);
+        this.clusterYTotals[clusterId]=(this.clusterYTotals[clusterId] || 0) + (cluster.y_total || 0);
+        this.clusterCounts[clusterId]=(this.clusterCounts[clusterId] || 0) + (cluster.count || 0);
       }
+      
     },
     finalize: function (rowWriter, context) {
       var newClusters={}
