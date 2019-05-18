@@ -1,6 +1,7 @@
-create or replace function SCALAR_ENCODER(INPUTNUMBER float, SDR_WIDTH float,MIN_VAL float,MAX_VAL float,WIDTH float)
+create or replace function SCALAR_ENCODER(INPUTNUMBER float, SDR_WIDTH float,MIN_VAL float,MAX_VAL float,WIDTH float, DENSE_OUTPUT)
   returns array
   language javascript
+  immutable
 as
 $$
 var scaleFunction = function(opts){
@@ -14,10 +15,10 @@ var scaleFunction = function(opts){
   }
 };
  
-function applyBitmaskAtIndex(index, w,n,reverseScale) {
-    let out = [],
-        lowerValue = reverseScale(index - (w/2)),
-        upperValue = reverseScale(index + (w/2))
+function applyBitmaskAtIndex(index, w,n,reverseScale, dense_output) {
+    let out = [];
+    let lowerValue = reverseScale(index - (w/2));
+    let upperValue = reverseScale(index + (w/2))
  
     // For each bit in the encoding, we get the input domain
     // value. Using w, we know how wide the bitmask should
@@ -25,12 +26,19 @@ function applyBitmaskAtIndex(index, w,n,reverseScale) {
     // of the bitmask. If this index is within the value
     // range, we turn it on.
     for (let i = 0; i < n; i++) {
-        let bitValue = reverseScale(i),
-            bitOut = 0
+        let bitValue = reverseScale(i);
+        let bitOut = 0;
+        // if dense==true, push out the index value only when active
+        // otherwise, always output 0 or 1 accordingly
         if (lowerValue <= bitValue && bitValue < upperValue) {
+            if (dense_output){
+              out.push(index)
+            }
             bitOut = 1
         }
-        out.push(bitOut)
+        if (!dense_output){
+          out.push(bitOut)
+        }
     }
     return out
 }
@@ -47,6 +55,6 @@ function encode(value,n,min,max,width) {
     }
     return applyBitmaskAtIndex(index,width,n,generatedReverseScaleFunction);
 }
-    return encode(INPUTNUMBER,SDR_WIDTH,MIN_VAL,MAX_VAL,WIDTH);
+    return encode(INPUTNUMBER,SDR_WIDTH,MIN_VAL,MAX_VAL,WIDTH, DENSE_OUTPUT);
 $$
 ;
