@@ -1,3 +1,5 @@
+-- Almost all of the code in this function is taken from HTM.js, written by Numenta Community member Paul Lamb.
+-- The source repository can be found at https://github.com/htm-community/htm.js/
 create or replace function HTM(INPUTS array)
     returns table (ACTIVE array,PREDICTIVE array)
     language javascript
