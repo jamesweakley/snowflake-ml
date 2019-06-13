@@ -3,7 +3,8 @@
  *  Parameters:
  *    TABLE_NAME - the name of the table containing the training data
  *    TARGET - the name of the column containing the target variable (the one to predict)
- *    COLS - a comma separated list of the table columns to include as variables in the model
+ *    BINARY_COLS - a comma separated list of the table columns to include as binary variables (split by average value) in the model
+ *    MULTIWAY_COLS - a comma separated list of the table columns to include as multi-way variables (split on all values present) in the model. Columns with high cardinality will have an adverse impact on performance.
  *    TRAINING_PARAMS - an object containing training parameters, which can be:
          cv_limit (default 10) - Coefficient of Deviation limit, used to stop branching
          total_count_limit (default 1) - Total record count limit, used to stop branching
