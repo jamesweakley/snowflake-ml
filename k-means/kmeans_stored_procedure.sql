@@ -13,7 +13,7 @@ create or replace procedure k_means(TABLE_NAME varchar, COLUMN_NAMES varchar, CL
   }
   // First, clear out any existing centroids for this table+column combo
   var results = snowflake.execute({
-    sqlText: "delete from cluster_centroids where TABLE_NAME='"+TABLE_NAME+"' and COLUMNS='"+COLUMN_NAMES+"'"
+    sqlText: "delete from KMEANS_CLUSTERS where TABLE_NAME='"+TABLE_NAME+"' and COLUMNS='"+COLUMN_NAMES+"'"
   });
   
   // next, select random rows to use as initial centroid values
@@ -31,7 +31,7 @@ create or replace procedure k_means(TABLE_NAME varchar, COLUMN_NAMES varchar, CL
   
   // Store the initial centroids in the tracking table
   snowflake.execute({
-    sqlText: "insert into cluster_centroids (TABLE_NAME,COLUMNS,CENTROIDS) select '"+TABLE_NAME+"','"+COLUMN_NAMES+"',PARSE_JSON('"+JSON.stringify(clusterCentroids)+"')"
+    sqlText: "insert into KMEANS_CLUSTERS (TABLE_NAME,COLUMNS,CENTROIDS) select '"+TABLE_NAME+"','"+COLUMN_NAMES+"',PARSE_JSON('"+JSON.stringify(clusterCentroids)+"')"
   });
   
   // Now iterate through and update the centroids
@@ -53,7 +53,7 @@ create or replace procedure k_means(TABLE_NAME varchar, COLUMN_NAMES varchar, CL
       throw "No results returned from assignment query";
     }
     clusterCentroids = results.getColumnValue("MERGED_CLUSTERS");
-    var updateCentroidsQuery = "update CLUSTER_CENTROIDS "+
+    var updateCentroidsQuery = "update KMEANS_CLUSTERS "+
                                     "set CENTROIDS = PARSE_JSON('"+JSON.stringify(clusterCentroids)+"') where TABLE_NAME='"+TABLE_NAME+"' and COLUMNS='"+COLUMN_NAMES+"'";
     snowflake.execute({
       sqlText: updateCentroidsQuery
@@ -68,11 +68,11 @@ create or replace procedure k_means(TABLE_NAME varchar, COLUMN_NAMES varchar, CL
     // Update step: Calculate the new means (centroids) of the observations in the new clusters.
     var updateCentroidsQuery =  "  with x as ( "+
                                 "    select cluster_index,object_construct('x',avg(\""+columnNamesArray[0]+"\")::string,'y',"+
-                                                                              "avg(\""+columnNamesArray[1]+"\")::string) as cluster_centroids"+
+                                                                              "avg(\""+columnNamesArray[1]+"\")::string) as KMEANS_CLUSTERS"+
                                 "  from \""+TABLE_NAME+"\" "+
                                 "  group by cluster_index"+
                                 "  )"+
-                                "  select object_agg(cluster_index,cluster_centroids) as NEW_CLUSTERS from x";
+                                "  select object_agg(cluster_index,KMEANS_CLUSTERS) as NEW_CLUSTERS from x";
     results = snowflake.execute({
       sqlText: updateCentroidsQuery
     });
