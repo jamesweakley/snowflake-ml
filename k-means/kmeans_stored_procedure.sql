@@ -65,10 +65,6 @@ create or replace procedure k_means(TABLE_NAME varchar, COLUMN_NAMES varchar, CL
       sqlText: updateSourceTableQuery
     });
 
-
-    //throw JSON.stringify(clusterCentroids);
-
-
     // Update step: Calculate the new means (centroids) of the observations in the new clusters.
     var updateCentroidsQuery =  "  with x as ( "+
                                 "    select cluster_index,object_construct('x',avg(\""+columnNamesArray[0]+"\")::string,'y',"+
@@ -84,7 +80,6 @@ create or replace procedure k_means(TABLE_NAME varchar, COLUMN_NAMES varchar, CL
       throw "No results returned from update query";
     }
     clusterCentroids = results.getColumnValue("NEW_CLUSTERS");
-    
   }
   
   return "success";
